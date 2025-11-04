@@ -15,7 +15,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Database initialization with proper async handling
+// Database initialization
 const db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
         console.error('Error opening database:', err.message);
@@ -26,7 +26,7 @@ const db = new sqlite3.Database('./database.db', (err) => {
 });
 
 function initializeDatabase() {
-    // Create tables sequentially to ensure they exist before inserting data
+    // Create tables sequentially
     db.serialize(() => {
         // Users table
         db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -83,145 +83,152 @@ function initializeDatabase() {
         // Wait for tables to be created, then insert sample data
         setTimeout(() => {
             insertSampleData();
-        }, 100);
+        }, 500);
     });
 }
 
 function insertSampleData() {
     console.log('Starting to insert sample data...');
     
-    // Insert default admin user
-    const adminPassword = bcrypt.hashSync('admin123', 10);
-    db.run(`INSERT OR IGNORE INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`, 
-        ['Admin User', 'admin@velvetvogue.com', adminPassword, 'admin'], 
-        function(err) {
-            if (err) {
-                console.error('Error inserting admin user:', err);
-            } else {
-                if (this.changes > 0) {
-                    console.log('Admin user created');
-                } else {
-                    console.log('Admin user already exists');
-                }
-            }
+    // First, delete any existing admin user to ensure clean state
+    db.run('DELETE FROM users WHERE email = ?', ['admin@velvetvogue.com'], (err) => {
+        if (err) {
+            console.error('Error clearing admin user:', err);
         }
-    );
-
-    // Insert sample user
-    const userPassword = bcrypt.hashSync('user123', 10);
-    db.run(`INSERT OR IGNORE INTO users (name, email, password) VALUES (?, ?, ?)`, 
-        ['Demo User', 'user@example.com', userPassword],
-        function(err) {
-            if (err) {
-                console.error('Error inserting demo user:', err);
-            } else {
-                if (this.changes > 0) {
-                    console.log('Demo user created');
-                } else {
-                    console.log('Demo user already exists');
-                }
-            }
-        }
-    );
-
-    // Insert sample products
-    const sampleProducts = [
-        {
-            name: 'Elegant Evening Dress',
-            description: 'A stunning evening dress perfect for special occasions. Made with premium fabric for maximum comfort and style.',
-            price: 129.99,
-            image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'dresses',
-            stock: 15,
-            featured: 1
-        },
-        {
-            name: 'Classic Blazer',
-            description: 'A timeless blazer that adds sophistication to any outfit. Perfect for both professional and casual settings.',
-            price: 89.99,
-            image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'jackets',
-            stock: 20,
-            featured: 1
-        },
-        {
-            name: 'Casual Summer Top',
-            description: 'Light and comfortable top ideal for warm weather. Features a modern design with breathable fabric.',
-            price: 39.99,
-            image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'tops',
-            stock: 25,
-            featured: 1
-        },
-        {
-            name: 'Designer Handbag',
-            description: 'Luxurious handbag with ample space and elegant design. Crafted from high-quality materials.',
-            price: 199.99,
-            image: 'https://images.unsplash.com/photo-1582418702059-97ebafb35d09?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'accessories',
-            stock: 10,
-            featured: 1
-        },
-        {
-            name: 'Slim Fit Jeans',
-            description: 'Comfortable and stylish slim fit jeans that flatter your figure. Made from durable denim material.',
-            price: 59.99,
-            image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'bottoms',
-            stock: 30,
-            featured: 0
-        },
-        {
-            name: 'Winter Wool Coat',
-            description: 'Warm and cozy wool coat for cold weather. Features a classic design with modern touches.',
-            price: 149.99,
-            image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'jackets',
-            stock: 12,
-            featured: 0
-        },
-        {
-            name: 'Silk Scarf',
-            description: 'Elegant silk scarf with beautiful patterns. Perfect accessory for any outfit.',
-            price: 29.99,
-            image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'accessories',
-            stock: 50,
-            featured: 0
-        },
-        {
-            name: 'Leather Boots',
-            description: 'High-quality leather boots that combine style and durability. Perfect for all seasons.',
-            price: 119.99,
-            image: 'https://images.unsplash.com/photo-1542280756-74b2f55e73ab?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-            category: 'shoes',
-            stock: 18,
-            featured: 0
-        }
-    ];
-
-    let productsInserted = 0;
-    sampleProducts.forEach((product, index) => {
-        db.run(`INSERT OR IGNORE INTO products (name, description, price, image, category, stock, featured) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [product.name, product.description, product.price, product.image, product.category, product.stock, product.featured],
+        
+        // Insert default admin user with fresh hash
+        const adminPassword = bcrypt.hashSync('admin123', 10);
+        db.run(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`, 
+            ['Admin User', 'admin@velvetvogue.com', adminPassword, 'admin'], 
             function(err) {
                 if (err) {
-                    console.error(`Error inserting product ${product.name}:`, err);
+                    console.error('Error inserting admin user:', err);
                 } else {
-                    if (this.changes > 0) {
-                        productsInserted++;
-                    }
-                }
-                
-                // Check if all products have been processed
-                if (index === sampleProducts.length - 1) {
-                    setTimeout(() => {
-                        console.log(`Sample data insertion completed. ${productsInserted} products inserted/verified`);
-                        console.log('Database initialized with sample data');
-                    }, 500);
+                    console.log('✅ Admin user created: admin@velvetvogue.com / admin123');
                 }
             }
         );
+    });
+
+    // Clear and recreate demo user
+    db.run('DELETE FROM users WHERE email = ?', ['user@example.com'], (err) => {
+        if (err) {
+            console.error('Error clearing demo user:', err);
+        }
+        
+        const userPassword = bcrypt.hashSync('user123', 10);
+        db.run(`INSERT INTO users (name, email, password) VALUES (?, ?, ?)`, 
+            ['Demo User', 'user@example.com', userPassword],
+            function(err) {
+                if (err) {
+                    console.error('Error inserting demo user:', err);
+                } else {
+                    console.log('✅ Demo user created: user@example.com / user123');
+                }
+            }
+        );
+    });
+
+    // Clear existing products and insert fresh ones
+    db.run('DELETE FROM products', (err) => {
+        if (err) {
+            console.error('Error clearing products:', err);
+        }
+        
+        const sampleProducts = [
+            {
+                name: 'Elegant Evening Dress',
+                description: 'A stunning evening dress perfect for special occasions. Made with premium fabric for maximum comfort and style.',
+                price: 129.99,
+                image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'dresses',
+                stock: 15,
+                featured: 1
+            },
+            {
+                name: 'Classic Blazer',
+                description: 'A timeless blazer that adds sophistication to any outfit. Perfect for both professional and casual settings.',
+                price: 89.99,
+                image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'jackets',
+                stock: 20,
+                featured: 1
+            },
+            {
+                name: 'Casual Summer Top',
+                description: 'Light and comfortable top ideal for warm weather. Features a modern design with breathable fabric.',
+                price: 39.99,
+                image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'tops',
+                stock: 25,
+                featured: 1
+            },
+            {
+                name: 'Designer Handbag',
+                description: 'Luxurious handbag with ample space and elegant design. Crafted from high-quality materials.',
+                price: 199.99,
+                image: 'https://images.unsplash.com/photo-1582418702059-97ebafb35d09?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'accessories',
+                stock: 10,
+                featured: 1
+            },
+            {
+                name: 'Slim Fit Jeans',
+                description: 'Comfortable and stylish slim fit jeans that flatter your figure. Made from durable denim material.',
+                price: 59.99,
+                image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'bottoms',
+                stock: 30,
+                featured: 0
+            },
+            {
+                name: 'Winter Wool Coat',
+                description: 'Warm and cozy wool coat for cold weather. Features a classic design with modern touches.',
+                price: 149.99,
+                image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'jackets',
+                stock: 12,
+                featured: 0
+            },
+            {
+                name: 'Silk Scarf',
+                description: 'Elegant silk scarf with beautiful patterns. Perfect accessory for any outfit.',
+                price: 29.99,
+                image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'accessories',
+                stock: 50,
+                featured: 0
+            },
+            {
+                name: 'Leather Boots',
+                description: 'High-quality leather boots that combine style and durability. Perfect for all seasons.',
+                price: 119.99,
+                image: 'https://images.unsplash.com/photo-1542280756-74b2f55e73ab?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                category: 'shoes',
+                stock: 18,
+                featured: 0
+            }
+        ];
+
+        let productsInserted = 0;
+        sampleProducts.forEach((product) => {
+            db.run(`INSERT INTO products (name, description, price, image, category, stock, featured) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [product.name, product.description, product.price, product.image, product.category, product.stock, product.featured],
+                function(err) {
+                    if (err) {
+                        console.error(`Error inserting product ${product.name}:`, err);
+                    } else {
+                        productsInserted++;
+                        console.log(`✅ Product "${product.name}" inserted`);
+                    }
+                    
+                    if (productsInserted === sampleProducts.length) {
+                        console.log('🎉 Database initialization completed successfully!');
+                        console.log('📊 Sample data ready for use');
+                    }
+                }
+            );
+        });
     });
 }
 
@@ -301,6 +308,8 @@ app.post('/api/auth/login', (req, res) => {
         return res.status(400).json({ message: 'Email and password are required' });
     }
 
+    console.log(`Login attempt for: ${email}`);
+
     db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
         if (err) {
             console.error('Database error in login:', err);
@@ -308,13 +317,19 @@ app.post('/api/auth/login', (req, res) => {
         }
 
         if (!user) {
+            console.log(`User not found: ${email}`);
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
+        console.log(`User found: ${user.email}, role: ${user.role}`);
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            console.log(`Password mismatch for: ${email}`);
             return res.status(400).json({ message: 'Invalid credentials' });
         }
+
+        console.log(`Login successful for: ${email}`);
 
         const token = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
@@ -679,4 +694,5 @@ app.listen(PORT, () => {
     console.log(`🚀 Velvet Vogue server running on http://localhost:${PORT}`);
     console.log(`📊 Admin login: admin@velvetvogue.com / admin123`);
     console.log(`👤 Demo user login: user@example.com / user123`);
+    console.log('⏳ Initializing database...');
 });
