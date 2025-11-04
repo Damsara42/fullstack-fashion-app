@@ -12,6 +12,29 @@ async function initializeApp() {
     updateCartCount();
     initializeHeroSlider();
     await loadFeaturedProducts();
+    setupEventListeners();
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Logout handler
+    const logoutLink = document.getElementById('logoutLink');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            logoutUser();
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('authDropdown');
+        const userIcon = document.getElementById('userIcon');
+        
+        if (userIcon && !userIcon.contains(event.target) && dropdown && !dropdown.contains(event.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
 }
 
 // Authentication functions
@@ -28,11 +51,18 @@ async function checkAuthStatus() {
             if (response.ok) {
                 currentUser = await response.json();
                 updateAuthUI();
+            } else {
+                // Token is invalid, clear it
+                localStorage.removeItem('token');
+                currentUser = null;
             }
         } catch (error) {
             console.error('Auth check failed:', error);
+            localStorage.removeItem('token');
+            currentUser = null;
         }
     }
+    updateAuthUI();
 }
 
 function updateAuthUI() {
@@ -43,36 +73,55 @@ function updateAuthUI() {
     const userIcon = document.getElementById('userIcon');
 
     if (currentUser) {
-        loginLink.style.display = 'none';
-        registerLink.style.display = 'none';
-        logoutLink.style.display = 'block';
-        userIcon.textContent = '👤';
+        if (loginLink) loginLink.style.display = 'none';
+        if (registerLink) registerLink.style.display = 'none';
+        if (logoutLink) {
+            logoutLink.style.display = 'block';
+            logoutLink.onclick = logoutUser;
+        }
+        if (userIcon) userIcon.textContent = '👤';
         
-        if (currentUser.role === 'admin') {
+        if (currentUser.role === 'admin' && adminLink) {
             adminLink.style.display = 'block';
         }
+    } else {
+        if (loginLink) loginLink.style.display = 'block';
+        if (registerLink) registerLink.style.display = 'block';
+        if (logoutLink) logoutLink.style.display = 'none';
+        if (adminLink) adminLink.style.display = 'none';
+        if (userIcon) userIcon.textContent = '👤';
     }
 }
 
 function toggleAuthDropdown() {
     const dropdown = document.getElementById('authDropdown');
-    dropdown.classList.toggle('show');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+    }
 }
 
-// Close dropdown when clicking outside
-document.addEventListener('click', function(event) {
-    const dropdown = document.getElementById('authDropdown');
-    const userIcon = document.getElementById('userIcon');
+// Logout function
+function logoutUser() {
+    localStorage.removeItem('token');
+    currentUser = null;
+    cart = [];
+    localStorage.removeItem('cart');
+    updateAuthUI();
+    updateCartCount();
+    showNotification('Logged out successfully', 'success');
     
-    if (!userIcon.contains(event.target) && !dropdown.contains(event.target)) {
-        dropdown.classList.remove('show');
-    }
-});
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1000);
+}
 
 // Hero Slider
 function initializeHeroSlider() {
     const slides = document.querySelectorAll('.slide');
     const dots = document.querySelectorAll('.dot');
+    
+    if (slides.length === 0) return;
+    
     let currentSlide = 0;
     
     function showSlide(n) {
@@ -82,7 +131,9 @@ function initializeHeroSlider() {
         currentSlide = (n + slides.length) % slides.length;
         
         slides[currentSlide].classList.add('active');
-        dots[currentSlide].classList.add('active');
+        if (dots[currentSlide]) {
+            dots[currentSlide].classList.add('active');
+        }
     }
     
     // Auto slide change
@@ -102,6 +153,8 @@ function initializeHeroSlider() {
 async function loadFeaturedProducts() {
     try {
         const response = await fetch('http://localhost:3000/api/products/featured');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        
         const products = await response.json();
         
         const grid = document.getElementById('featuredProductsGrid');
@@ -122,6 +175,7 @@ async function loadFeaturedProducts() {
         }
     } catch (error) {
         console.error('Failed to load featured products:', error);
+        showNotification('Failed to load featured products', 'error');
     }
 }
 
@@ -141,6 +195,8 @@ function updateCartCount() {
 async function addToCart(productId) {
     try {
         const response = await fetch(`http://localhost:3000/api/products/${productId}`);
+        if (!response.ok) throw new Error('Failed to fetch product');
+        
         const product = await response.json();
         
         const existingItem = cart.find(item => item.id === productId);
@@ -192,7 +248,6 @@ async function subscribeNewsletter() {
     }
     
     try {
-        // In a real application, you would send this to your backend
         showNotification('Thank you for subscribing to our newsletter!', 'success');
         emailInput.value = '';
     } catch (error) {

@@ -1,103 +1,155 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { db } = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
-const router = express.Router();
-
-const JWT_SECRET = 'your_jwt_secret_key_here';
-
-// Register
-router.post('/register', async (req, res) => {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-        return res.status(400).json({ message: 'All fields are required' });
-    }
-
+// Authentication functions
+async function loginUser(email, password) {
     try {
-        // Check if user already exists
-        db.get('SELECT id FROM users WHERE email = ?', [email], async (err, row) => {
-            if (err) {
-                return res.status(500).json({ message: 'Database error' });
-            }
+        const response = await fetch('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
 
-            if (row) {
-                return res.status(400).json({ message: 'User already exists' });
-            }
+        const data = await response.json();
 
-            // Hash password and create user
-            const hashedPassword = await bcrypt.hash(password, 10);
+        if (response.ok) {
+            localStorage.setItem('token', data.token);
+            currentUser = data.user;
+            showNotification('Login successful!', 'success');
             
-            db.run('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', 
-                [name, email, hashedPassword], 
-                function(err) {
-                    if (err) {
-                        return res.status(500).json({ message: 'Error creating user' });
-                    }
-
-                    res.status(201).json({ 
-                        message: 'User created successfully',
-                        userId: this.lastID 
-                    });
+            setTimeout(() => {
+                if (currentUser.role === 'admin') {
+                    window.location.href = 'admin.html';
+                } else {
+                    window.location.href = 'index.html';
                 }
-            );
-        });
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Login failed', 'error');
+        }
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('Login error:', error);
+        showNotification('Login failed. Please try again.', 'error');
     }
-});
+}
 
-// Login
-router.post('/login', (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-        if (err) {
-            return res.status(500).json({ message: 'Database error' });
-        }
-
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.json({
-            message: 'Login successful',
-            token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
+async function registerUser(name, email, password) {
+    try {
+        const response = await fetch('http://localhost:3000/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, email, password })
         });
-    });
-});
 
-// Get current user
-router.get('/me', authenticateToken, (req, res) => {
-    db.get('SELECT id, name, email, role FROM users WHERE id = ?', [req.user.id], (err, user) => {
-        if (err || !user) {
-            return res.status(404).json({ message: 'User not found' });
+        const data = await response.json();
+
+        if (response.ok) {
+            showNotification('Registration successful! Please login.', 'success');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1500);
+        } else {
+            showNotification(data.message || 'Registration failed', 'error');
         }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showNotification('Registration failed. Please try again.', 'error');
+    }
+}
 
-        res.json(user);
-    });
+function logoutUser() {
+    localStorage.removeItem('token');
+    currentUser = null;
+    cart = [];
+    localStorage.removeItem('cart');
+    updateAuthUI();
+    updateCartCount();
+    showNotification('Logged out successfully', 'success');
+    
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1000);
+}
+
+// Form handlers
+function handleLogin(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+        showNotification('Please fill in all fields', 'warning');
+        return;
+    }
+    
+    loginUser(email, password);
+}
+
+function handleRegister(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!name || !email || !password || !confirmPassword) {
+        showNotification('Please fill in all fields', 'warning');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'warning');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showNotification('Password must be at least 6 characters long', 'warning');
+        return;
+    }
+    
+    registerUser(name, email, password);
+}
+
+// Update auth UI function
+function updateAuthUI() {
+    const loginLink = document.getElementById('loginLink');
+    const registerLink = document.getElementById('registerLink');
+    const logoutLink = document.getElementById('logoutLink');
+    const adminLink = document.getElementById('adminLink');
+    const userIcon = document.getElementById('userIcon');
+
+    if (currentUser) {
+        if (loginLink) loginLink.style.display = 'none';
+        if (registerLink) registerLink.style.display = 'none';
+        if (logoutLink) {
+            logoutLink.style.display = 'block';
+            // Ensure logout link has the correct event listener
+            logoutLink.onclick = logoutUser;
+        }
+        if (userIcon) userIcon.textContent = '👤';
+        
+        if (currentUser.role === 'admin' && adminLink) {
+            adminLink.style.display = 'block';
+        }
+    } else {
+        if (loginLink) loginLink.style.display = 'block';
+        if (registerLink) registerLink.style.display = 'block';
+        if (logoutLink) logoutLink.style.display = 'none';
+        if (adminLink) adminLink.style.display = 'none';
+    }
+}
+
+// Add event listener for logout link when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Re-attach logout event listener
+    const logoutLink = document.getElementById('logoutLink');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            logoutUser();
+        });
+    }
 });
-
-module.exports = router;
