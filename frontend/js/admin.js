@@ -3,19 +3,68 @@ let allOrders = [];
 let allProducts = [];
 
 async function loadAdminPanel() {
-    const token = localStorage.getItem('token');
+    console.log('Loading admin panel...');
     
-    if (!token || currentUser?.role !== 'admin') {
-        showNotification('Access denied. Admin privileges required.', 'error');
+    // Check authentication first
+    await checkAuthStatus();
+    
+    const token = localStorage.getItem('token');
+    console.log('Token exists:', !!token);
+    console.log('Current user:', currentUser);
+    
+    if (!token || !currentUser) {
+        console.log('No token or user, redirecting to login...');
+        showNotification('Please login to access admin panel', 'warning');
         setTimeout(() => {
             window.location.href = 'login.html';
         }, 2000);
         return;
     }
     
+    if (currentUser.role !== 'admin') {
+        console.log('User is not admin, redirecting to home...');
+        showNotification('Access denied. Admin privileges required.', 'error');
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
+        return;
+    }
+    
+    console.log('User is admin, loading admin data...');
+    await loadAdminStats();
     await loadOrders();
     await loadProductsForAdmin();
     setupEventListeners();
+    
+    showNotification('Admin panel loaded successfully', 'success');
+}
+
+async function loadAdminStats() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3000/api/admin/stats', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const stats = await response.json();
+            document.getElementById('totalOrders').textContent = stats.totalOrders;
+            document.getElementById('totalProducts').textContent = stats.totalProducts;
+            document.getElementById('pendingOrders').textContent = stats.pendingOrders;
+            document.getElementById('totalRevenue').textContent = formatCurrency(stats.totalRevenue);
+        } else {
+            throw new Error('Failed to load stats');
+        }
+    } catch (error) {
+        console.error('Failed to load admin stats:', error);
+        // Set default values
+        document.getElementById('totalOrders').textContent = '0';
+        document.getElementById('totalProducts').textContent = '0';
+        document.getElementById('pendingOrders').textContent = '0';
+        document.getElementById('totalRevenue').textContent = '$0';
+    }
 }
 
 async function loadOrders() {
@@ -64,6 +113,11 @@ function displayOrders() {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
     
+    if (allOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No orders found</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = allOrders.map(order => `
         <tr>
             <td>#${order.id}</td>
@@ -90,6 +144,11 @@ function displayOrders() {
 function displayProductsForAdmin() {
     const tbody = document.getElementById('productsTableBody');
     if (!tbody) return;
+    
+    if (allProducts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products found</td></tr>';
+        return;
+    }
     
     tbody.innerHTML = allProducts.map(product => `
         <tr>
@@ -121,6 +180,7 @@ async function updateOrderStatus(orderId, newStatus) {
         if (response.ok) {
             showNotification('Order status updated successfully', 'success');
             await loadOrders(); // Reload orders to reflect changes
+            await loadAdminStats(); // Update stats
         } else {
             throw new Error('Failed to update order status');
         }
@@ -152,6 +212,12 @@ function setupEventListeners() {
     if (addProductForm) {
         addProductForm.addEventListener('submit', handleAddProduct);
     }
+
+    // Edit product form
+    const editProductForm = document.getElementById('editProductFormContent');
+    if (editProductForm) {
+        editProductForm.addEventListener('submit', handleEditProduct);
+    }
 }
 
 async function handleAddProduct(event) {
@@ -164,7 +230,8 @@ async function handleAddProduct(event) {
         price: parseFloat(formData.get('price')),
         category: formData.get('category'),
         stock: parseInt(formData.get('stock')),
-        image: formData.get('image')
+        image: formData.get('image'),
+        featured: formData.get('featured') ? 1 : 0
     };
     
     try {
@@ -182,6 +249,7 @@ async function handleAddProduct(event) {
             showNotification('Product added successfully', 'success');
             event.target.reset();
             await loadProductsForAdmin();
+            await loadAdminStats();
         } else {
             const error = await response.json();
             throw new Error(error.message);
@@ -209,6 +277,7 @@ async function deleteProduct(productId) {
         if (response.ok) {
             showNotification('Product deleted successfully', 'success');
             await loadProductsForAdmin();
+            await loadAdminStats();
         } else {
             throw new Error('Failed to delete product');
         }
@@ -225,11 +294,12 @@ function editProduct(productId) {
     // Populate form with product data
     document.getElementById('editProductId').value = product.id;
     document.getElementById('editName').value = product.name;
-    document.getElementById('editDescription').value = product.description;
+    document.getElementById('editDescription').value = product.description || '';
     document.getElementById('editPrice').value = product.price;
     document.getElementById('editCategory').value = product.category;
     document.getElementById('editStock').value = product.stock;
-    document.getElementById('editImage').value = product.image;
+    document.getElementById('editImage').value = product.image || '';
+    document.getElementById('editFeatured').checked = product.featured === 1;
     
     // Show edit form
     document.getElementById('editProductForm').style.display = 'block';
@@ -246,7 +316,8 @@ async function handleEditProduct(event) {
         price: parseFloat(formData.get('price')),
         category: formData.get('category'),
         stock: parseInt(formData.get('stock')),
-        image: formData.get('image')
+        image: formData.get('image'),
+        featured: formData.get('featured') ? 1 : 0
     };
     
     try {
@@ -274,3 +345,9 @@ async function handleEditProduct(event) {
         showNotification('Failed to update product: ' + error.message, 'error');
     }
 }
+
+// Make functions globally available
+window.updateOrderStatus = updateOrderStatus;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.handleEditProduct = handleEditProduct;
