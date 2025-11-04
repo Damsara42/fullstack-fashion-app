@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart - Velvet Vogue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container header-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">VV</div>
+                <span>Velvet Vogue</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="products.html">Products</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="#about">About</a></li>
+                </ul>
+            </nav>
+            <div class="nav-icons">
+                <div class="search-bar">
+                    <input type="text" placeholder="Search..." id="searchInput">
+                    <button onclick="searchProducts()">🔍</button>
+                </div>
+                <div class="nav-icon" id="userIcon" onclick="toggleAuthDropdown()">👤</div>
+                <div class="nav-icon" onclick="window.location.href='cart.html'">🛒 <span id="cartCount">0</span></div>
+                <div class="auth-dropdown" id="authDropdown">
+                    <a href="login.html" id="loginLink">Login</a>
+                    <a href="register.html" id="registerLink">Register</a>
+                    <a href="#" id="logoutLink" style="display:none;" onclick="logoutUser()">Logout</a>
+                    <a href="admin.html" id="adminLink" style="display:none;">Admin Panel</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="cart-container">
+        <h1 class="section-title">Your Shopping Cart</h1>
+        
+        <div class="cart-content">
+            <div class="cart-items" id="cartItems">
+                <!-- Cart items will be loaded dynamically -->
+            </div>
+            
+            <div class="cart-summary">
+                <h3>Order Summary</h3>
+                <div class="cart-total">
+                    Total: <span id="cartTotal">$0.00</span>
+                </div>
+                <button class="btn" onclick="proceedToCheckout()">Proceed to Checkout</button>
+                <button class="btn btn-outline" onclick="clearCart()">Clear Cart</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <!-- Same footer as index.html -->
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/cart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCart();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Velvet Vogue</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container header-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">VV</div>
+                <span>Velvet Vogue</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="products.html">Products</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="#about">About</a></li>
+                </ul>
+            </nav>
+            <div class="nav-icons">
+                <div class="nav-icon" id="userIcon" onclick="toggleAuthDropdown()">👤</div>
+                <div class="auth-dropdown" id="authDropdown">
+                    <a href="#" id="logoutLink" onclick="logoutUser()">Logout</a>
+                    <a href="index.html">Back to Store</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="container">
+            <h1 class="section-title">Admin Panel</h1>
+            
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-target="dashboard">Dashboard</button>
+                <button class="admin-tab" data-target="orders">Orders</button>
+                <button class="admin-tab" data-target="products">Products</button>
+                <button class="admin-tab" data-target="addProduct">Add Product</button>
+            </div>
+            
+            <!-- Dashboard -->
+            <div id="dashboard" class="admin-content active">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <h3>Total Orders</h3>
+                        <p class="stat-number" id="totalOrders">0</p>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <h3>Total Products</h3>
+                        <p class="stat-number" id="totalProducts">0</p>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <h3>Pending Orders</h3>
+                        <p class="stat-number" id="pendingOrders">0</p>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <h3>Total Revenue</h3>
+                        <p class="stat-number" id="totalRevenue">$0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders Management -->
+            <div id="orders" class="admin-content">
+                <h2>Order Management</h2>
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Email</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <!-- Orders will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Products Management -->
+            <div id="products" class="admin-content">
+                <h2>Product Management</h2>
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        <!-- Products will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Add Product -->
+            <div id="addProduct" class="admin-content">
+                <h2>Add New Product</h2>
+                <form id="addProductForm" class="glass-card">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name">Product Name *</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="category">Category *</label>
+                            <select id="category" name="category" required>
+                                <option value="">Select Category</option>
+                                <option value="dresses">Dresses</option>
+                                <option value="tops">Tops</option>
+                                <option value="bottoms">Bottoms</option>
+                                <option value="jackets">Jackets</option>
+                                <option value="accessories">Accessories</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="price">Price *</label>
+                            <input type="number" id="price" name="price" step="0.01" min="0" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="stock">Stock Quantity *</label>
+                            <input type="number" id="stock" name="stock" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="image">Image URL</label>
+                        <input type="url" id="image" name="image" placeholder="https://example.com/image.jpg">
+                    </div>
+                    
+                    <button type="submit" class="btn">Add Product</button>
+                </form>
+                
+                <!-- Edit Product Form (Hidden by default) -->
+                <div id="editProductForm" style="display: none; margin-top: 40px;" class="glass-card">
+                    <h2>Edit Product</h2>
+                    <form id="editProductFormContent" onsubmit="handleEditProduct(event)">
+                        <input type="hidden" id="editProductId" name="id">
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editName">Product Name *</label>
+                                <input type="text" id="editName" name="name" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editCategory">Category *</label>
+                                <select id="editCategory" name="category" required>
+                                    <option value="">Select Category</option>
+                                    <option value="dresses">Dresses</option>
+                                    <option value="tops">Tops</option>
+                                    <option value="bottoms">Bottoms</option>
+                                    <option value="jackets">Jackets</option>
+                                    <option value="accessories">Accessories</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="editDescription">Description</label>
+                            <textarea id="editDescription" name="description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editPrice">Price *</label>
+                                <input type="number" id="editPrice" name="price" step="0.01" min="0" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editStock">Stock Quantity *</label>
+                                <input type="number" id="editStock" name="stock" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="editImage">Image URL</label>
+                            <input type="url" id="editImage" name="image">
+                        </div>
+                        
+                        <button type="submit" class="btn">Update Product</button>
+                        <button type="button" class="btn btn-outline" onclick="document.getElementById('editProductForm').style.display = 'none'">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>Velvet Vogue</h3>
+                    <p>Elegance in Every Thread. Discover premium fashion that combines style with comfort.</p>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2023 Velvet Vogue. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/admin.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAdminPanel();
+        });
+    </script>
+</body>
+</html>
